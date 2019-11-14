@@ -27,7 +27,7 @@ class iCagendaExport
 	
 	private static function getNbMaxEvents()
 	{
-		return 100;
+		return 300;
 	}
 	
 	// OutputFile
@@ -73,16 +73,16 @@ class iCagendaExport
 		$i = 1;
 		
 		foreach ($event_dts as $event_dt){
-			$uid = "evenement_cey_" . $db_event->id . "-" . $i . "@excaliburyvelines.fr";
+			$uid = "evenement_cey_" . $db_event->id . "-" . $i . "contact@excaliburyvelines.fr";
 			$eventobj = new ZCiCalNode("VEVENT", $icalobj->curnode);
 					
 			$eventobj->addNode(new ZCiCalDataNode("DTSTART;" . $event_dt->dtStart));
 			$eventobj->addNode(new ZCiCalDataNode("DTEND;" . $event_dt->dtEnd));
 			
 			$eventobj->addNode(new ZCiCalDataNode("DTSTAMP:" . $dtstamp));
-			$eventobj->addNode(new ZCiCalDataNode("ORGANIZER:" . "excalibur.yvelines@gmail.com"));
+			$eventobj->addNode(new ZCiCalDataNode("ORGANIZER:" . "contact@excaliburyvelines.fr"));
 			$eventobj->addNode(new ZCiCalDataNode("UID:" . $uid));
-			//$eventobj->addNode(new ZCiCalDataNode("ATTENDEE:" . "excalibur.yvelines@gmail.com"));
+			//$eventobj->addNode(new ZCiCalDataNode("ATTENDEE:" . "contact@excaliburyvelines.fr"));
 			$eventobj->addNode(new ZCiCalDataNode("CREATED:" . ZCiCal::fromSqlDateTime($db_event->created)));
 			$eventobj->addNode(new ZCiCalDataNode("LAST-MODIFIED:" . ZCiCal::fromSqlDateTime($db_event->modified)));
 			$eventobj->addNode(new ZCiCalDataNode("DESCRIPTION:" . ZCiCal::formatContent(
@@ -104,8 +104,9 @@ class iCagendaExport
 		$start = ZCiCal::fromSqlDateTime($db_event->startdate);
 		$end = ZCiCal::fromSqlDateTime($db_event->enddate);
 
-		
-		if (substr($db_event->dates, 2, 1) > 1) {		
+		// Test sur : "s:<nb_events>:..."
+		if (substr($db_event->dates, 2, 1) > 1 || substr($db_event->dates, 2, 1) != ":") { // Nb d'occurences superieur a 1 ou sur 2 chiffres
+			// Repeating events on several days
 			// On recupere les chaines, s:16:"2019-05-06 20:30"
 			preg_match_all('/s\:16\:"([^"]+)";/', $db_event->dates, $str_dates);
 			foreach($str_dates[1] as $str_date) {
@@ -117,7 +118,8 @@ class iCagendaExport
 				$occurence->dtEnd = "VALUE=DATE:" . $dayEnd;
 				array_push($dates, $occurence);				
 			}			
-		} else { // Multi-day event and singletime event
+		} else { 	
+			// Multi-day event and singletime event
 			// On multi-day, info is stored on startdate/enddate
 			if($start == "00000000T000000Z") {
 				// On single date, info is stored on next
@@ -146,10 +148,10 @@ class iCagendaExport
     {
         $db = JFactory::getDbo();
         $query = $db->getQuery(true);
-        //SELECT `id`, `title`, `alias`, `image`, `shortdesc`, `address`, `startdate`, `enddate`, `next` FROM `fs48q_icagenda_events` WHERE `state` = 1 ORDER BY `startdate` ASC LIMIT 1000
+        //SELECT `id`, `title`, `alias`, `image`, `shortdesc`, `address`, `startdate`, `enddate`, `next`, `dates` FROM `fs48q_icagenda_events` WHERE `state` = 1 ORDER BY `next` DESC LIMIT 100
         $query->select($db->quoteName(array('id', 'title', 'alias', 'image', 'shortdesc', 'address', 'startdate', 'enddate', 'dates', 'next', 'created', 'modified', 'catid')));
         $query->from($db->quoteName('#__icagenda_events'));
-        $query->where($db->quoteName('state') . ' = 1');
+        $query->where($db->quoteName('state') . ' = 1'); // evenements publies
 		$query->andWhere($db->quoteName(catid) . ' != 7'); // salle fermee => pas dans calendrier
         $query->order('next DESC');
         $query->setLimit(self::getNbMaxEvents());
