@@ -97,6 +97,18 @@ class iCagendaExport
 		}		
     }
 	
+	private static function getNbOccurences($datesStr) {
+		
+		/*
+		$str1 = 'a:7:{i:0;s:16:"2019-12-02 20:30";i:1;s:16:"2019-10';
+		$str2 = 'a:10:{i:0;s:16:"2019-12-02 20:30";i:1;s:16:"2019-10';
+		$str3 = 'a:1:{i:0;s:16:"0000-00-00 00:00";}'; 
+		*/
+		
+		$infos = explode(":", $datesStr);
+		return $infos[1];
+	}
+	
 	//ZDateHelper::fromiCaltoUnixDateTime(
 	private static function getStartAndEndDates($eventobj, $db_event)
 	{
@@ -104,8 +116,11 @@ class iCagendaExport
 		$start = ZCiCal::fromSqlDateTime($db_event->startdate);
 		$end = ZCiCal::fromSqlDateTime($db_event->enddate);
 
-		// Test sur : "s:<nb_events>:..."
-		if (substr($db_event->dates, 2, 1) > 1 || substr($db_event->dates, 2, 1) != ":") { // Nb d'occurences superieur a 1 ou sur 2 chiffres
+		$nbOccurences = iCagendaExport::getNbOccurences($db_event->dates);
+
+		// Test sur : "a:<nb_events>:..."
+		// Ex => a:7:{i:0;s:16:"2019-12-02 20:30";i:1;s:16:"2019-10
+		if ($nbOccurences > 1) { // Nb d'occurences superieur a 1 ou sur 2 chiffres
 			// Repeating events on several days
 			// On recupere les chaines, s:16:"2019-05-06 20:30"
 			preg_match_all('/s\:16\:"([^"]+)";/', $db_event->dates, $str_dates);
@@ -121,6 +136,7 @@ class iCagendaExport
 		} else { 	
 			// Multi-day event and singletime event
 			// On multi-day, info is stored on startdate/enddate
+			// dates => a:1:{i:0;s:16:"0000-00-00 00:00";}
 			if($start == "00000000T000000Z") {
 				// On single date, info is stored on next
 				$start = ZCiCal::fromSqlDateTime($db_event->next);
